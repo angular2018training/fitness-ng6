@@ -1,0 +1,121 @@
+﻿1. Cải thiện style & Xử lý lỗi :
+
+_ Dùng snackbar hiển thị lỗi : MatSnackbarModule
+	. Tiêm snackbar vào AuthService.
+	. Tại registerUser catch error : this.snackbar.open(error.message, null, { // null là các action. VD : undo
+		duration: 3000
+	});
+	. Tại login tương tự
+_ Tại training service : fetchAvaiExercise
+	. Bổ sung thêm cho subscribe : error => {
+		this.uiService.loadingStateChanged.next(false);
+		this.uiService.showSnackbar('Fetching exercises failed, please try again later', null, 3000);
+		this.exercisesChanged.next(null);
+	}
+
+2. Hiệu ứng loading khi gọi đang chờ server phản hồi :
+
+_ Thêm <mat-spinner> dưới button login.
+_ Tạo thư mục shared/ui.service.ts.
+_ import { Subject } from 'rxjs';
+	export class UIService{
+		loadingStateChanged = new Subject<boolean>();
+	}
+_ Khai báo provider.
+_ Inject vào constructor của auth service :
+	. Dòng đầu của login :
+		gọi this.uiService.loadingStateChanged.next(true);
+	. .next(false) khi then và catch.
+	. Tương tự cho registerUser.
+_ Tại LoginComponent : inject ui service và tạo biến isLoading : boolean = false để xác định trạng thái. Nhớ tạo subscription ( loadingSubs )
+	. ngOnInit : this.uiService.loadingStateChanged.subscribe(isLoading => this.isLoading = isLoading)
+	. ngOnDestroy : unsubscribe();
+	. Phía html : ngif !isLoading cho button submit và ngược lại cho mat-spinner.
+_ Tương tự cho Signup Component.
+_ Tương tự cho New-Training Component chỗ select ( ngif tại mat-form field : *ngIf="!isLoading && exercises" )
+	. Tại button : 	if exercises => Start. if !exercises => Fetch Again ( type button và có sự kiện click )
+	. fetctExercises(){ this.trainingService.fetchAvailableExercises() } // copy ngOnInit xuống xài chung
+
+3. Đưa snackbar vào ui service để tái sử dụng :
+_ Tại UIService :
+	. constructor : tiêm snackbar vào.
+	. Viết phương thức showSnackbar(message, action, duration){
+		this.snackbar.open(message, action, {
+			duration // duration : duration
+		});
+	}
+_ Sửa tại : auth.service.
+
+4. Tách project thành các feature module :
+
+_ AuthModule : tại thư mục auth tạo auth.module.ts : declarations, imports, exports.
+	. Copy Signup, Login component qua module.( declarations )
+	. imports FormsModule, ReactiveFormsModule ( login ), MaterialModule, FlexLayoutModule, AngularFireAuthModule
+	. Báo lỗi ngModel ngIf : imports CommonModule từ @Angular/common
+
+_ TrainingModule :
+	declarations : TrainingComponent, CurrentTrainingComp, Past, New
+	imports : Common, Forms, FlexLayoutModule, MaterialModule
+
+	
+_ AppModule : imports AuthModule.
+	. Bỏ ReactiveFormsModule, các component login, signup.
+	. Bỏ TrainingComp, Current, Past, New.
+	. Bỏ AngularFireAuth
+
+5. Optimize Subscription : check rồi mới unsubscribe
+	. Kiểm tra ngOnDestroy tất cả component.
+	. Nếu 2 cái thì if 2 cái
+
+6. SharedModule : bao gồm : CommonModule, FormsModule, MaterialModule, FlexLayoutModule. ( imports + exports )
+	. Tại thư mục shared.module.ts ( cùng ui.service )
+	. Tại auth, training module : imports shared module vào.
+
+** import AngularFirestoreModule vào app.module ( imports ) và bỏ module này tại training module.
+
+7. Tách phần router : auth, training riêng.
+_ Tại thư mục auth : tạo auth-routing.module.ts 
+
+const routes : Routes = [
+	// signup + login
+]
+
+imports: [
+	RouterModule.forChild(routes)
+],
+exports: [
+	RouterModule
+]
+	. Tại auth module . imports AuthRoutingModule và Xóa signup 
+	. Tại app login component import đi.
+
+_ Tại thư mục training : tạo training-routing.module.ts và import TrainingRoutingModule vào training.module.ts
+
+	. Chỉ có 1 path là training.
+	. import AuthGuard vào providers.
+	. AuthGuard tại app giữa nguyên.
+
+
+8. Áp dụng lazy loading :
+_ Tại app.module.ts :
+	. Bỏ imports TrainingModule. // đây là static import.
+_ Tại app-routing.module.ts :
+	. Bổ sung : { path : 'training', loadChildren: './training/training.module#TrainingModule' } // cùng với WelcomeComponent
+_ Tại training-routing module :
+	. Đổi path từ 'training' thành '' vì đã có ở app routing.
+
+9. Thay đổi AuthGuard :
+_ Bỏ AuthGuard tại training-routing.
+_ Tại AppRoutingModule : bổ sung canLoad
+
+	. { path : 'training', loadChildren: './training/training.module#TrainingModule', canLoad: [AuthGuard] }
+	. Bổ sung implments CanLoad tại AuthGuard : ( @angular/router )
+		canLoad(){
+			if this.authService.isAuth return true
+			else	this.router.navigate(['/login']);
+		}
+
+
+
+
+

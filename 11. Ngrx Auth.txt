@@ -1,0 +1,121 @@
+﻿1. Tại auth : tạo auth.reducer.ts và auth.action.ts
+
+_ auth.action : copy qua
+
+import { Action } from '@ngrx/store';
+
+export const SET_AUTHENTICATED = '[Auth]  Set Authenticated';
+export const SET_UNAUTHENTICATED = '[Auth] Set Unauthenticated';
+
+export class SetAuthenticated implements Action {
+	readonly type = SET_AUTHENTICATED;
+}
+
+export class SetUnauthenticated implements Action {
+	readonly type = SET_UNAUTHENTICATED;
+}
+
+export type AuthActions = SetAuthenticated | SetUnAuthenticated;
+
+_ auth.reducer : 
+
+import { Action } from '@ngrx/store';
+import { AuthActions, SET_AUTHENTICATED, SET_UNAUTHENTICATED } from './auth.actions';
+
+export interface State {
+	isAuthenticated: boolean;
+}
+
+const initialState : State = {
+	isAuthenticated: false
+}
+
+export function authReducer(state = initialState, action: AuthActions){
+	switch(action.type){
+		case SET_AUTHENTICATED:
+			return {
+				isAuthenticated: true
+			}
+		case SET_UNAUTHENTICATED:
+			return {
+				isAuthenticated: false
+			}
+		default : { return state }
+	}
+}
+
+export const getIsAuth = (state: State) => state.isAuthenticated;
+
+_ Tại app reducer :
+
+import * as fromAuth from './auth/auth.reducer';
+
+export interface State {
+	Bổ sung : auth: fromAuth.State
+}
+
+export const reducers: ActionReducerMap<State> = {
+	ui: fromUi.uiReducer,
+	Bổ sung : auth: fromAuth.authReducer
+};
+
+export const getAuthState = createFeatureSelector<fromAuth.State>('auth');
+export const getIsAuth = createSelector(getAuthState, fromAuth.getIsAuth);
+
+_ Sử dụng tại auth service :
+
+	import * as Auth from './auth.actions';
+	Bỏ Subject, bỏ isAuth
+	. Tại initAuthListener : 
+	Thay thế 2 dòng : this.isAuthenticated = true + this.authChange.next(true)
+		this.store.dispatch(new Auth.SetAuthenticated());
+	this.authChange.next(false) => this.store.dispatch(new Auth.SetUnauthenticated());
+
+_ Fix lỗi sau khi bỏ isAuth và Subject : AuthGuard
+
+	import { Store } from '@ngrx/store';
+	import * as fromRoot from './../app.reducer';
+	. Tiêm store : Store<fromRoot.State>
+
+	canActive(...){
+		return this.store.select(fromRoot.getIsAuth);
+	}
+
+	canLoad : tương tự
+
+_ Fix lỗi sau khi bỏ isAuth và Subject : Header
+
+	import { Store } from '@ngrx/store';
+	import * as fromRoot from './../../app.reducer';
+
+	constructor : tiêm private store: Store<fromRoot.State>
+
+	Đổi kiểu cho isAuth => isAuth$: Observable<boolean>;
+
+	ngOnInit bỏ hết : thisisAuth$ = this.store.select(fromRoot.getIsAuth);
+
+	Tại html : thay thành isAuth$ | async và !(isAuth$ | async)
+
+
+_ Fix lỗi sau khi bỏ isAuth và Subject : Sidenav
+
+	Tương tự header.
+
+_ Lỗi logout không thể login :
+
+Lưu ý : Observable là 1 cấu trúc liên tục. Emit new value liên tục. Còn AuthGuard chỉ chạy 1 lần. Ta muốn sau khi nhận 1 giá trị và đóng subscription.
+=> Tại AuthGuard :
+
+	return this.store.select(fromRoot.getIsAuth).pipe(take(1));
+
+
+
+
+
+
+
+
+
+
+
+

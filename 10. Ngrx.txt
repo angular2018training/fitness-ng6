@@ -1,0 +1,166 @@
+﻿1. Why ?
+
+_ State có thể update anywhere
+_ State is ( possibly ) mutable
+_ Handling side effects ( Http calls ) chưa rõ
+_ Thay thế sử dụng Subject :D
+
+2.  Cài đặt : npm install --save @ngrx/store
+
+_ Reducer : cùng cấp với app module -> tạo app.reducer.ts
+
+export interface State {
+	isLoading: boolean;
+}
+
+const initialState : State {
+	isLoading = false;
+}
+
+export function appReducer(state, action){
+	switch(action.type){
+		case 'START_LOADING':
+			return {
+				isLoading: true
+			};
+		case 'STOP_LOADING':
+			return {
+				isLoading: false
+			};
+		default: return state;
+	}
+}
+
+_ Tại AppModule : 
+
+import { StoreModule } from '@ngrx/store';
+import { appReducer } from './app.reducer'; 
+
+-> StoreModule.forRoot({ui: appReducer})
+
+_ Sử dụng : tại AuthService
+
+	. import { Store } from '@ngrx/store'; import * as fromApp './../app.reducer';
+	. inject store vào constructor : private store: Store<{ui: fromApp.State}>
+	. Sử dụng cho register User : this.store.dispatch({ type : 'START_LOADING' }); // hoặc 'STOP_LOADING'
+=> chỗ nào dùng loadingStateChanged.next(false) thay bằng STOP_LOADING ngược lại dispatch START_LOADING.
+
+_ Sử dụng tại Login Component : 
+
+	. Import và tiêm constructor như trên.
+	. inject tương tự.
+	. Tại ngOnInit() : 
+		> Import Observable từ rxjs;
+		> Thay đổi kiểu dữ liệu isLoading : Observable<boolean>;
+		> Test : this.store.subscribe(data => console.log(data)); // ta được ui state
+		import { map } from 'rxjs/operators'
+		> this.isLoading$ = this.store.map(state => state.ui.isLoading);
+	. Bỏ subscribe, subscription loadingStateChanged.
+	. Tại html : button ngif !(isLoading$ | async)
+
+
+_ Làm việc với nhiều reducer và nhiều action :
+	. Tại shared : tạo ui.actions.ts 
+import { Action } from '@ngrx/store';
+export const START_LOADING = '[UI] Start Loading';
+export const STOP_LOADING = '[UI] Stop Loading';
+
+export class StartLoading implements Action{
+	readonly type = START_LOADING;
+}
+
+export class StopLoading implements Action{
+	readonly type = STOP_LOADING;
+}
+
+export type UIActions = StartLoading | StopLoading;
+
+	. Tại shared : tạo ui.reducer.ts
+
+import { Action } from '@ngrx/store';
+import { UIActions, START_LOADING, STOP_LOADING } from '/ui.actions';
+
+export interface State {
+	isLoading: boolean;
+}
+
+const initialState : State {
+	isLoading = false;
+}
+
+export function uiReducer(state = initialState, action: UIActions){
+	switch(action.type){
+		case START_LOADING:
+			return {
+				isLoading: true
+			};
+		case STOP_LOADING:
+			return {
+				isLoading: false
+			};
+		default: { return state; }
+	}
+}
+
+export const getIsLoading = (state: State) => state.isLoading;
+
+	. Tại App Reducer : bỏ hết.
+import { ActionReducerMap } from '@ngrx/store';
+import * as fromUi from './shared/ui.reducer';
+
+export interface State{
+	ui: fromUi.State
+}
+
+export const reducers: ActionReducerMap<State> = {
+	ui: fromUi.uiReducer
+};
+
+export const getUiState = createFeatureSelector<fromUi.State>('ui');
+export const getIsLoading = createSelector(getUiState, fromUi.getIsLoading);
+
+
+	. dispatch action : tại auth service
+
+import * as fromRoot from './../app.reducer';
+tiêm constructor : private store: Store<fromRoot.State> // lấy được ui state
+import * as UI from './../shared/ui.actions';
+register User : this.store.dispatch(new UI.StartLoading()); // tương tự stop
+login component : tương tự
+	this.isLoading$ = this.store.select(fromRoot.getIsLoading);
+
+	. Tại module :
+import { reducers } from './app.reducer';
+StoreModule.forRoot(reducers)
+
+_ Tương tự thực hiện : new training, signup.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

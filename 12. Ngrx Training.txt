@@ -1,0 +1,187 @@
+﻿1. Tạo training action : training.actions.js => copy auth qua cho lẹ :D
+
+import { Action } from '@ngrx/store';
+
+export const SET_AVAILABLE_TRAINING = '[Training] Set Available Training'; 
+export const SET_FINISHED_TRAINING = '[Training] Set Finished Training';
+export const START_TRAINING = '[Training] Start Training';
+export const STOP_TRAINING = '[Training] Stop Training';
+
+export class SetAvailableTraining implements Action {
+	readonly type = SET_AVAILABLE_TRAINING;
+	constructor(public payload: Exercise[]){}
+}
+
+export class SetFinishedTraining implements Action {
+	readonly type = SET_FINISHED_TRAINING;
+	constructor(public payload: Exercise[]){}
+}
+
+export class StartTraining implements Action {
+	readonly type = START_TRAINING;
+	constructor(public payload: String){}
+}
+
+export class StopTraining implements Action {
+	readonly type = STOP_TRAINING;
+}
+
+export type TrainingActions = SetAvailableTraining | SetFinishedTraining | StartTraining | StopTraining;
+
+
+2. Tạo training reducer : training.reducer.js 
+
+import { Action } from '@ngrx/store';
+import { TrainingActions, SET_AVAILABLE_TRAINING , ... } from './training.actions';
+import { Exercise } from './exercise.model';
+import * as fromRoot from './../app.reducer';
+
+export interface TrainingState {
+	availableExercises: Exercise[];
+	finishedExercises: Exercise[];
+	activeTraining: Exercise
+}
+
+export interface State extends fromRoot.State {
+	training : TrainingState;
+}
+
+const initialState: TrainingState = {
+	availableExercises: [],
+	finishedExercises: [],
+	activeTraining: null
+}
+
+export function trainingReducer(state = initialState, action: TrainingActions){
+	switch(action.type){
+		case SET_AVAILABLE_TRAINING:
+			return {
+				...state,
+				availableExercises: action.payload
+			}
+		case SET_FINISHED_TRAINING:
+			return {
+				...state,
+				finishedExercises: action.payload
+			}
+		case START_TRAINING:
+			return {
+				...state,
+				activeTraining: { ...state.availableExercises.find(ex => ex.id === action.payload) }
+			}
+		case STOP_TRAINING:
+			return {
+				...state
+				availableExercises: null
+			}
+	}
+}
+
+
+export const  getTrainingState = createFeatureSelector<TrainingState>('training')
+
+export const getAvailableExercises = createSelector(getTrainingState, (state : TrainingState) => state.availableExercises);
+export const getFinishedExercises = createSelector(getTrainingState, (state : TrainingState) => state.finishedExercises);
+export const getActiveTraining = createSelector(getTrainingState, (state : TrainingState) => state.activeTraining);
+export const getIsTraining = createSelector(getTrainingState, (state : TrainingState) => state.activeTraining !== null);
+
+3. Lazy Loading State : Tại Training Module
+
+import { StoreModule } from '@ngrx/store';
+import { trainingReducer } from './training.reducer';
+
+imports : [
+	StoreModule.forFeature('training', trainingReducer); // phải trùng tên trong reducer
+]
+
+4. Dispatch Training Action : 
+_ Khi fetch dữ liệu từ firebase => lưu vào store => lấy ra.
+_ Bỏ subject.
+_ Tại Training Service : callback function khi subscribe data :
+	. Bỏ this.availableExercises = exercises; +  this.exercisesChanged.next([...this.availableExercises]);
+	. Tiêm vào constructor : lưu ý do TrainingState kế thừa từ RootState nên có đủ state
+		import * as fromTraining from './../training.reducer';
+		private store: Store<fromTraining.state>
+		import * as Training from './training.actions';
+	. Gọi : this.store.dispatch(new Training.SetAvailableTraining(exercises));
+	
+_ Tại cancelExercise : 
+	. Bỏ this.runningExercise = null; và this.exerciseChanged.next(null);
+	. Gọi this.store.dispatch(new Training.StopTrainingExercise());
+_ Tại complete exercise : tương tự cancel
+_ Tại startExercise(selectedId : string) :
+	. Bỏ hết
+	. Gọi this.store.dispatch(new Training.StartTraining(selectedId);
+
+5. Lấy state trong store : tại training component
+
+_ Bỏ subscription, onDestroy.
+_ inject store : 
+	import { Store } from '@ngrx/store';
+	import * as fromTraining from './training.reducer';
+
+	constructor(private store: Store<fromTraining.State>)
+
+	ongoingTraining$ : Observable<boolean>;
+_ Tại ngOnInit() : Bỏ hết
+	this.ongoingTraining$ = this.store.select(fromTraining.getIsTraining);
+
+_ HTML : thay ongoingTraining$ | async
+
+6. Lấy state tại new training : ( các exercises )
+
+_ Bỏ subscription, ondestroy.
+_ import :
+	import * as fromTraining from './../app.reducer';
+_ exercises$: Observable<Exercise[]>;
+_ Tại ngOnInit bỏ subscription = và thay :
+	this.exercises$ = this.store.select(fromTraining.getAvailableExercises);
+_ Tại html : thay exercises$ | async
+
+7. Xử lý Current Traning :
+
+_ import Store
+_ import fromTraining
+_ inject store
+_ Tại startOrResumeTimer(){
+	this.store.select(fromTraining.getActiveTraining).pipe(take(1)).subscribe(ex => {
+		// copy nội dung cũ vào đây.
+		// Thay this.trainingService.getRunningExercise().duration / 100 * 1000 = ex.duration/100 * 1000;
+	});
+}
+
+_ Tại TrainingService : 
+	. Tại completeExercise : this.store.select(fromTraining.getActiveTraining).pipe(take(1)).subscribe(ex => {
+		// copy nội dung cũ
+		// thay this.runningExercise = ex
+	}))
+	. Tại cancel : tương tự complete.
+_ Bỏ getRunningExercise
+
+8. Kết nối datatable :
+
+_ Tại past training : import store và training store, inject : 
+
+ngOnInit(){
+	this.store.select(fromTraining.getFinishedExercise).subscribe((exercises: Exercise[]) => {
+		this.dataSource.data = exercises;
+	});
+	this.trainingService.fetchCompletedOrCancelExercises();
+}
+
+bỏ ngOnDestroy();
+
+_ Header + Sidenav : bỏ authSubscription.
+_ Training Service : bỏ subject, fetchAvailableExercise : bỏ this.exerciseChanged.next(null)
+
+
+
+
+
+
+
+
+
+
+
+const 

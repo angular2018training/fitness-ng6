@@ -1,0 +1,72 @@
+﻿1. Datatable : MatTableModule
+_ Quan tâm : dataSource, displayedColumns
+	_ Thẻ : <mat-table [dataSource]="dataSource">
+	_ Cột : <ng-container matColumnDef="date">
+	_ Bên trong cột  có 2 phần : header + cell
+		+ <mat-header-cell *matHeaderCellDef>Date
+		+ <mat-cell *matCellDef="let element">{{ element.date | date }}
+
+	_ Tại past-training : hiển thị date, name, calories( dùng pipe number ), duration ( number ), state
+	_ Cuối cùng : chỉ ra key của đối tượng ( Exercise ) để datatable tìm data :
+	<mat-header-row *matHeaderRowDef="displayedColumns"></>
+	<mat-row *matRowDef="let row; columns: displayedColumns;"></>
+	
+	_ Tại Component.ts :
+		
+		. displayedColumns = ['date', 'name', 'duration', 'calories', 'state'];
+		. dataSource = new MatTableDataSource<Exercise>();
+
+		. Tiêm TrainingService để lấy Exercise : ngOnInit(){ this.dataSource.data = this.trainingService.getExercises(); }
+		. Tại TrainingService ( getExercises ) : return this.exercises.slice();
+
+_ Sorting : ( Sắp xếp trong datatable )
+	_ Import module MatSortModule
+	_ Tại mat-table bổ sung directive : matSort.
+	_ Tại mat-header-cell bổ sung directive : mat-sort-header.
+	_ Sử dụng ViewChild để truy cập đến table có matSort.
+		@ViewChild(MatSort) sort: MatSort;
+	_ Sử dụng lifecycle : AfterViewInit
+		ngAfterViewInit(){
+			this.dataSource.sort = this.sort;
+		}
+
+_ Filtering :
+	_ Tạo giao diện :
+	<div fxLayoutAlign="center center">
+		<mat-form-field fxFlex="40%"> // chiếm 40%
+	   		<input matInput type="text" (keyup)="doFilter($event.target.value)" placeholder="Enter your keyword"/>
+		</mat-form-field>
+	</div>
+	_ Xử lý :
+	doFilter(filterValue : string){
+		this.dataSource.filter = filterValue.trim().toLowerCase();
+	}
+
+_ Pagination : MatPaginatorModule
+	<mat-paginator
+		[pageSize]="10"
+		[pageSizeOptions]="[5, 10, 20]"
+	</mat-paginator>
+	
+	@ViewChild(MatPaginator) paginator: MatPaginator;
+
+	ngAfterViewInit(){
+		// Bổ sung this.dataSource.paginator = this.paginator; 
+	}
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

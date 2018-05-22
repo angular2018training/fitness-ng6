@@ -1,0 +1,76 @@
+﻿1. Sử dụng cho đăng ký :
+
+_ Module : { AngularFireAuthModule } from 'angularfire2/auth';
+_ AngularFireAuth : sử dụng tại auth.service.ts => inject vào constructor. ( afAuth )
+	. Bỏ giả lập đăng ký ( chỉ để lại this.authSuccessfully() )
+	. Tại registerUser : gọi this.afAuth.auth.createUserWithEmailAndPassword(authData.email, authData.password).then(result => {
+		log(result);
+	}).catch(err => { log(err) });
+	
+=> Lỗi 400 : sign-in provider is disabled. Vào firebase => vào Authentication => SET UP SIGN-IN METHOD => Kích hoạt Email/Password enable và save.
+
+2. Đăng nhập :
+
+_ Tại auth.service : this.afAuth.auth.signInWithEmailAndPassword(authData.email, authData.password).then(result => {
+	log(result);
+	this.authSuccessfully();
+})catch(err => log(err) );
+_ Đổi tên isAuth => isAuthenticated.
+_ Tại hàm authSuccessfully => isAuthen = true., tại hàm logout => false. Bỏ getUser, isAuth => return this.isAuthenticated.
+
+3. Đăng xuất :
+
+_ Bổ sung dòng đầu : this.afAuth.auth.signOut();
+
+4. Xác thực firebase ( thay vì restful dùng token ) :
+
+_ Tại Database ở trang firebase bổ sung ở tab RULES : allow read, write: if request.auth != null;
+=> xảy ra các lỗi ẩn khi ta logout. Do luôn lắng nghe trên server và khi logout ta chưa unsubscribe.
+_ Tại AuthService : fetchAvailableExercises trên fibase. callback function T2 của subscribe là err => log(err). Lúc này mới thấy lỗi
+_ Khắc phục tạo subscription và hủy nó :
+	private fbSubs: Subscription[] = [];
+	Tại fetchAvailable và fetchCompletedOrCanlledExercises gọi : fbSubs.push(đặt code vào đây).
+_ Viết hàm hủy : cancelSubscriptions(){
+	this.fbSubs.forEach(sub => sub.unsubscribe());
+} => gọi tại logout: this.trainingService.cancelSubscriptions();
+
+5. Tái cấu trúc code : AuthService
+
+_  initAuthListener(){
+	this.afAuth.authState.subscribe(user => {
+		if(user){
+			// copy từ authSuccessfully
+			this.isAuthenticated = true;
+			this.authChange.next(true);
+			this.router.navigate(['/training']);
+		}else{
+			// copy từ logout - firebase.signOut();
+			this.trainingService.cancelSubscription();
+			this.authChange.next(false);					
+			this.router.navigate(['/login']);
+			this.isAuthenticated = false;
+		}
+	});
+}
+
+_ Bỏ authSuccessfully();
+_ Tại AppComponent : Inject AuthService, tại ngOnInit gọi initAuthListener() để lắng nghe việc authentication.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

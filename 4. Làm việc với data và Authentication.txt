@@ -1,0 +1,105 @@
+﻿1. Lưu ý :
+
+_ AngularFire chưa hỗ trợ rxjx6 => cần dùng rxjs-compat
+
+npm install --save rxjs-compat
+
+2. Authentication : 
+
+_ model : user.model.ts => interface User : email, userId string;
+	  auth-data.model.ts => interface AuthData : email, password string;
+_ service : auth.service.ts : AuthService {
+	private user: User;
+	
+	registerUser(authData : AuthData){
+		this.user = {
+			email : authData.email,
+			userId: Math.round(Math.random() * 10000).toString();
+		}
+	}
+
+	login(authData : AuthData){
+		this.user = {
+			email: authData.email,
+			userId: Math.round(Math.random() * 10000).toString();
+		}
+	}
+
+	logout(){
+		this.user = null;
+	}	
+
+	getUser(){
+		return { ...this.user };
+	}
+
+	isAuthenticated(){ // cho auth guard
+		return this.user !== null;
+	}
+
+}
+
+=> Khai báo module chỗ providers và khi xài tiêm vào constructor.
+
+_ signup : sự kiện onSubmit
+
+	const { email, password } = f.value;
+
+	this.authService.registerUser({
+		email,
+		password
+	});
+
+_ login :
+
+	const { email, password } = f.value;
+
+	this.authService.login({
+		email,
+		password
+	});
+
+_ Subject trong rxjs/Subject : tính năng khá giống event emitter, cho phép emit event và theo dõi nó.
+Tại sao dùng : khi đăng ký hoặc login. ta sẽ emit 1 sự kiện để thông báo là đã làm công việc gì đó. ( Observable )
+Là 1 generic. Do đó dữ liệu có thể dùng nhiểu kiểu khác nhau.
+
+	. Tại AuthService : tạo 1 thuộc tính
+		authChange = new Subject<boolean>();
+
+	. Tại registerUser :
+		this.authChange.next(true); => Giống output ra. giá trị tiếp theo sẽ là true. Theo dõi sự thay đổi. và lúc này sẽ là true.
+	. Tại login :	
+		this.authChange.next(true);
+	. Tại logout :
+		this.authChange.next(false);
+	. Tại header.component.ts : tiêm authService vào.
+		Tiến hành theo dõi ( lắng nghe ) để hiển thị menu cho chính xác.
+		Tạo thuộc tính isAuthenticated : boolean = false;
+		
+		this.subscription = this.authService.authChange.subscribe(authStatus => { // next giá trị gì thì ở đây trả về giá trị đó
+			this.isAuthenticated = authStatus;
+		});
+
+		Để giải phóng vùng nhớ ta cần sử dụng Subscription :
+			import { Subscription } from 'rxjs/Subscription';
+			Tao thuộc tính subscription
+			
+		Tại ngOnDestroy : this.subscription.unsubscribe();
+		Hiển thị menu theo biến isAuth : sidenav và header.
+3. Routing & Authen :
+
+	. Xử lý tại auth.service : tiêm Router
+		Sau khi đăng ký, đăng nhập => this.router.navigate(['/training']); => tách thành hàm authSuccessfully ( authChange.next và navigate )
+		Sau khi đăng xuất => /login
+	. Xử lý đăng xuất : style cusor và bắt sự kiện click : 2 chỗ ( lưu ý tại sidenav onClose + onLogout() )
+		gọi authService.logout();
+		
+	. Dùng AuthGuard để bảo vệ route : ng g guard [name]
+		. inject authService, Router
+		. canActivate : 
+			Nếu this.authService.isAuthenticated() => return true | ngược lại this.router.navigate(['/login']);
+		. Khai báo providers cho AuthGuard
+		. Áp dụng canActivate cho route training : { path: 'training', component: TrainingComponent, canActivate: [AuthGuard] } 
+
+
+

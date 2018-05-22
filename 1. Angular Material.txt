@@ -1,0 +1,112 @@
+﻿1. Giới thiệu :
+
+_ Trang chủ : material.angular.io
+
+2. Cài đặt : theo trang chủ
+3. Sử dụng :
+
+B1 : import Module của component đó ( Mat<Name>Module ) from @angular/material
+B2 : Sử dụng thông qua selector : mat-<tên>
+
+4. Khai báo
+
+_ Tại module tiến hành khai báo sử dụng animation module :
+
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations'; &&
+imports
+
+_ Tạo mới module material ( material.module.ts ) để import và export các component của material. Các module khác import vào sử dụng.
+_ Include theme như trên trang chủ tại styles.css. ( tham khảo thêm theme tại : material/prebuilt-theme )
+	Nếu bị lỗi khi sử dụng component bỏ dấu ~
+_ Cài đặt Gesture : như trang chủ.
+_ Khai báo Material Design Icon.
+_ Tham khảo kỹ về component và tránh tình trạng deprecated : Tại trang chủ click vào github
+
+5. Giải thích : Tại sao không import 1 lần mà chia ra từng thành phần nhỏ ?
+
+_ Để khối lượng code nhỏ nhất, tăng performance.
+
+6. Tìm hiểu Button : 
+
+_ Tạo button Click me : <button mat-button>Click me</> & import, export { MatButtonModule } from '@angular/material';
+=> tương tự : mat-raised-button, color="accent" ( primary, warn )
+=> tương tự mat-icon-button có nội dung là <mat-icon>home</> ( tên tại material design icon ).
+
+7. Tạo cấu trúc : 
+
+_ Generate auth/signup component : 
+	ng g c auth/signup --module app.module + login
+	ng g c training --module app.module + training/new(past, current )
+	ng g c welcome --module app.module
+
+_ Tạo routing : app-routing.module.ts
+
+B1 :
+
+import { NgModule } from '@angular/core';
+import { Routes } from '@angular/router';
+
+import các component cần thiết
+
+const routes: Routes = [
+	{ path : '', component: WelcomeComponent },
+	{ path : 'signup', component: SignupComponent },
+	{ path : 'login', component: LoginComponent },
+	{ path : 'training', component: TrainingComponent }
+];
+
+@NgModule({
+	imports: [
+		RouterModule.forRoot(routes)
+	],
+	exports: [
+		RouterModule
+	]
+})
+export class AppRoutingModule{
+
+}
+
+B2 : khai báo router-oulet : tại app.component.html.
+
+8. Signup Form : 
+
+MatFormFieldModule
+MatInputModule
+
+<section>
+	<form>
+		<mat-form-field>
+			<input type="email" matInput placeholder="Your email" />
+		</mat-form-field>
+		<mat-form-field>
+			<input type="password" matInput placeholder="Your password" />
+		</mat-form-field>
+	</form>
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

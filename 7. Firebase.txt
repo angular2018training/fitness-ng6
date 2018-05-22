@@ -1,0 +1,140 @@
+﻿1. Tài liệu
+_ Tạo mới project firebase : firebase.google.com
+2. Angularfire :
+_ Là third-party cung cấp đầy đủ các chức năng.
+3. Observables, Observers, Subscriptions :
+_ Observable : đại diện cho tập hợp các giá trị, sự kiện trong tương lai. Khi phát sinh, observable điều phối đến Observer.
+_ Observer : là tập hợp các callbacks tương ứng cho việc lắng nghe ( next, error, complete ) được gửi đến observable.
+_ Subscription : là kết quả sau khi thực hiện một observable. Dùng hủy việc xử lý.
+4. Firebase : Database
+_ Chọn Cloud Firestore Beta : chọn in test mode => enable.
+_ Tạo mới collection : availableExercises
+_ Tạo document : auto-id và có các field :
+	field		type		value
+	name		string		Crunches
+	duration	number		30	
+	calories	number		8
+=> Save
+=> Sau đó tạo thêm các exercises của project.
+5. Cài đặt :
+_ Tham khảo tại angularfire2 github
+_ Cài đặt angularfire2 firebase để sử dụng firebase :
+	npm install angularfire2 firebase --save
+_ Khai báo cấu hình api key : copy phần firebase : { các thông số } vào environments/environment.ts
+	Các thông số lấy tại trang chủ firebase -> Add Firebase yo your web app.
+_ import AngularFireModule :
+	import { AngularFireModule } from 'angularfire2';
+	import { environment } from './../environments/environment';
+	import { AngularFirestoreModule } from 'angularfire2/firestore';
+
+_ Khai báo imports
+	AngularFireModule.initializeApp(environment.firebase),
+	AngularFirestoreModule
+
+6. Lắng nghe giá trị thay đổi sử dụng valueChanges ( firestore ) : lấy dữ liệu tại NewTrainingComponent : 
+_ import { AngularFirestore } from 'angularfire2/firestore';
+_ inject vào constructor : private db: AngularFirestore
+_ Tại ngOnInit() :
+	. Đóng hàm gọi service.
+	. Gọi collection : this.db.collection('tên_collection_trên_firestore').valueChanges().subscribe(result => {
+		log(result); // xem giá trị
+	});
+	. Gán vào exercises :
+		this.exercises = this.db.collection('tên_collection_trên_firestore').valueChanges();
+	. Tiến hành import { Observable } from 'rxjs';
+		exercises: Observable<Exercise[]>;
+	. Lúc này exercises là async value( giá trị lấy từ server chưa biết khi nào có được và có thể undefined lúc khởi tạo )	
+		Sử dụng pipe async => let exercise of exercises | async [value]="exercise.name"
+7. Sử dụng snapshotChanges() :
+_ Thay valueChanges thành snapshotChanges().subscribe(result => {
+	log(result); // xem để lấy dữ liệu.
+})
+_ Dữ liệu trả về (result) là 1 array. để xem data từ firebase ta tiến hành duyệt mảng và gọi item.payload.doc.data(); => exercise.
+_ Ta có thể dễ dàng lấy dữ liệu bao gồm cả id bằng toán tử map trong observable để lấy dữ liệu từ server về.
+this.exercises = this.db.collection('').snapshotChanges().map(arr => {
+	return arr.map(item => {
+		return {
+			id: doc.payload.doc.id,
+			name: doc.payload.doc.data().name,
+			duration: .duration
+			calories: .calories
+		}
+	})
+})
+
+_ Lúc này khi subscribe ta nhận được 1 kết quả là danh sách các exercise.
+_ Cuối cùng thay thế [value]="exercise.name" tại new-training.component.html ( trước đây chưa có id )
+
+_ * Tách vào file service :
+	Tiêm AngularFirestore vào constructor của service.( phải có @Injectable() )
+	Xóa danh sách dữ liệu mẫu và thay hàm lấy dữ liệu thành fetchAvailableExercises(){
+	// copy xuống
+		return this.db.collection('').snapshotChanges().map(arr => {
+			return arr.map(item => {
+			return {
+				id: doc.payload.doc.id,
+				name: doc.payload.doc.data().name,
+				duration: .duration
+				calories: .calories
+			}
+		}).subscribe((exercises: Exercise[]) => { this.availableExercises = exercises; })
+	}
+
+_ Tạo 1 Subject lắng nghe sự thay đổi danh sách này :
+	. exercisesChanged = new Subject<Exercise[]>();
+	. Bổ sung khi subscribe lấy dữ liệu về :
+		this.exercisesChanged.next([...this.availableExercises]);
+
+_ Tại ngOnInit() của new training :
+	this.exerciseSubscription = this.trainingService.exercisesChanged.subscribe(exercises => (this.exercises = exercises));  // tạo subscription
+	this.trainingService.fetchAvailableExercises();
+	Hủy subscription tại ngOnDestroy
+
+
+8. Completed và Cancelled Exercise : thêm các exercise đã hoàn thành vào database : Thêm dữ liệu trong firestore thông qua phương thức add
+
+_ Tại training service xây dựng private phương thức addDataToDatabase(exercise : Exercise){
+	this.db.collection('finishedExercises').add(exercise);
+}
+_ Phương thức completeExercise và cancel tại service : thay = this.addDataToDatabase
+
+9. Kết nối datatable vào firestore : chức năng quản lý các bài tập đã làm.
+
+_ Hiện tại : dữ liệu lấy tại PastTrainingComponent ở ngOnInit.
+_ Tại TrainingService thay exercises thành finishedExercises
+	. Bổ sung 1 biến Subject<Exercise[]>() : finishedExercisesChanged để nhận giá trị cuối cùng.
+_ Tại getCompletedOrCancelledExercises() thay bằng fetch và {
+	this.db.collect('finishedExercises').valueChanges().subscribe((exercises: Exercise)=> { // không cần id nên ko xài snapshot
+		this.finishedExercises = exercises;
+		this.finishedExercisesChanged.next(exercises);
+	});
+}
+_ Tại NgOnInit của PastTraining : đưa subscription vào lắng nghe
+	this.exerciseChangedSubscription = this.trainingService.finishedExercisesChanged.subscribe((exercises: Exercise[]) => {
+		this.dataSource.data = exercises;
+	});
+	this.trainingService.fetchCompletedOrCancelledExercises() // chỉ fetch 1 lần duy nhất để lắng nghe
+_ Tại ngOnDestroy hủy subscription.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

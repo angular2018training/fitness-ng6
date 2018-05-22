@@ -1,0 +1,154 @@
+﻿_ Sử dụng Tab Material : cho trang training ( New Exercise, Past Exercise )
+	MatTabsModule
+
+	<mat-tab-group
+		<mat-tab label="New Exercise">
+			<app-new-training></>
+		</>
+	</>
+	
+_ Sử dụng card : new-training
+	MatCardModule
+	
+	<section class="new-training" fxLayout fxLayoutAlign="center">
+		<mat-card fx.Flex.xs="100%" fxFlex="400px">
+			<mat-card-title fxLayoutAlign="center">Time to start a workout!</>
+		</>
+		<mat-card-content fxLayoutAlign="center">
+			Select type of training
+		</>
+		<mat-card-actions fxLayoutAlign="center">
+			<button type="submit" mat-button>Start</>
+		</>
+	</>
+
+_ Sử dụng dropdown list : Select type of training
+	MatSelectModule
+
+	<mat-form-field>
+		<mat-select placeholder="Favorite food">
+			<mat-option value="crunches">
+				Crunches
+			<mat-option value="touch-toes">
+				Touch Toes
+			<mat-option value="side-lunges">
+				Side Lunges	
+				// Burpees
+
+_ Style :
+
+.new-training{
+	padding: 30px;
+}
+
+_ Progress Spinner : app-current-training
+MatProgressSpinnerModule
+MatDialogModule
+
+Tại training component. Thêm component app-current-training.
+
+	.TrainingComponent.ts :
+		ongoingTraining : boolean = false;
+	.NewTrainingComponent.html : bắt sự kiện click submit. để gửi data ra ngoài. (click)="onStartTraining()"
+	.NewTrainingComponent.ts : @Output trainingStart = new EventEmitter<void>(); onStartTraining gọi trainingStart.emit();
+	.Training.Component.html <app-new-training (trainingStart)="ongoingTraining=true"
+
+	. Kiểm tra nếu onStartTraining true thì hiện spinner
+		<mat-tab-group *ngIf="!ongoingTraining"
+		<app-current-training *ngIf="ongoingTraining"
+
+
+	. CurrentTraining.html :
+		<section class="current-training" fxLayout="column" fxLayoutAlign="center center"> // padding : 30px;
+			<mat-progress-spinner mode="determinate" [value]="progress"></mat-spinner>
+			<h1>{{ progress }}%</h1>
+			<p>Keep on going, you can do it<p/>
+			<button mat-raised-button color="accent" (click)="onStop()">Stop</button>
+		</section>
+
+	. CurrentTraining.ts :
+		progress : number = 0;
+		timer: number;
+
+		constructor(private dialog: MatDialog)
+		
+		ngOnInit(){
+			this.timer = setInterval(() => {
+				this.progress += 5;
+				if(this.progress >= 100){
+					clearInterval(this.timer);
+				}
+			}, 1000);
+		}		
+
+		onStop(){
+			clearInterval(this.timer);
+			this.dialog.open(StopTrainingComponent);
+		}
+
+	. StopTrainingComponent ( dialog )
+
+		template: `<h1 mat-dialog-title>Are you sure?</h1>
+			<mat-dialog-content>
+				<p>You already got {{ progress }}%</p>
+			</mat-dialog-content>
+			<mat-dialog-actions>
+				<button mat-button [mat-dialog-close]="true">Yes</>
+				<button mat-button [mat-dialog-close]="false">No</>
+			</mat-dialog-actions>
+			`
+		Khai báo vào app.module và thêm mảng entryComponents: [StopTrainingComponent]
+			Component này sẽ tự động chèn vào thay vì dùng selector.
+			
+	. Tại CurrentTraining.ts :
+		const dialogRef = this.dialog.open(StopTrainingComponent, {
+			data: {
+				progress: this.progress
+			}
+		});	
+		dialogRef.afterClosed().subscribe(result => {
+			console.log(result);
+		});	
+
+	. Tại StopTraining dùng @Inject() nhận data :
+		import { Inject } from '@angular/core';
+		import { MAT_DIALOG_DATA } from '@angular/material';
+
+		constructor(@Inject(MAT_DIALOG_DATA) private passedData : any){}
+
+		=> {{ progress }} => passedData.progress
+
+
+	. Xử lý Yes No của dialog.
+
+		** Xử lý Yes chuyển trang
+		import Output, EventEmitter
+		
+		@Output() trainingExit = new EventEmitter();
+		
+		dialogRef.afterClosed().subscribe(result => {
+			if(result){
+				this.trainingExit.emit();
+			}else{
+				startOrResumeTimer();
+			}
+		});
+		
+		. tại training component : <app-current-training (trainingExit)="ongoingTraining = false" />
+
+		** Xử lý No Load tiếp :
+		
+		Tại ngOnInit tách thành hàm startOrResumeTimer(){
+			this.timer = setInterval(() => {
+				this.progress += 5;
+				if(this.progress >= 100){
+					clearInterval(this.timer);
+				}
+			}, 1000);
+		}
+	
+
+
+
+
+

@@ -1,0 +1,9 @@
+﻿Subject : mang tính chất Observable & Observer. Giống EventEmitter. Là đối tượng đặc biệt dùng để quan sát, lắng nghe các message, sự thay đổi giống như
+observable. 1 số tính năng : 
+
+	_ Cần có init value vì nó luôn trả ra giá trị khi đăng ký ( khi subscription ) ngay cả khi nó chưa nhận giá trị tiếp theo. Để nhận giá trị tiếp
+theo ( khi subscribe ) sử dụng phương thức next().
+	_ Khi ta subscribe ta sẽ nhận được giá trị cuối cùng. Hàm getValue().
+	_ Khác so với observable : 
+		. Ngoài việc quan sát, lắng nghe. Ta còn có thể gửi giá trị đến một đối tượng.
+	_ VD : Khi login thành công ta gọi hàm next(). dựa vào subject ta subscribe để biết được đã login và thay đổi router cho phù hợp ( router auth )

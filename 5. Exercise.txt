@@ -1,0 +1,102 @@
+﻿
+1. Tạo dữ liệu mock data :
+_ exercise.model.ts ( cùng cấp training component ) : 
+	interface Exercise { id: string; name: string; duration: number; calories: number; date?: Date; state? : 'completed' | 'cancelled' | null }
+
+_training.service.ts : TrainingService{
+	
+	private availableExercises: Exercise[] = [
+		{ id : 'head', name: 'Head', duration: 30, calories: 8 }
+	];
+
+	getAvailableExercises(){
+		return this.availableExercises.slice(); // tránh tình trạng tham chiếu
+	}
+
+}
+
+_ Đổ dữ liệu ra new-training : khai báo providers, inject constructor 
+
+	exercises: Exercise[] = [];
+	constructor(private _trainingService : TrainingService){}
+
+	ngOnInit(){
+		this.exercises = this._trainingService.availableExercises;
+	}
+
+	Dùng *ngFor đổ ra. [value]="exercise.id" và {{ exercise.name }}	
+_ Thiết lập exercise đang thực hiện : tại TrainingService
+
+	private runningExercise: Exercise; // xác định bài tập nào đang kích hoạt
+
+	startExercise(selectedId : string){
+		this.runningExercise  = this.availableExercises.find(item => item.id === selectedId);
+	}
+
+_ Kiểm soát exercise nào đang bắt đầu : sử dụng Subject rxjs ( giảm thiểu dùng output )
+
+	_ Tại TrainingService : Tạo exerciseChanged = new Subject<Exercise>();
+		. Khi startExercise : thay đổi giá trị thành runningExercise => this.exerciseChange.next({...this.runningExercise});
+		
+	_ Tại TrainingComponent : tiêm trainingService
+		. Tạo exerciseSubscription : Subscription để lắng nghe, quan sát.
+		. subscribe exerciseChanged của trainingService ta được exercise => { if(exercise) this.ongoingTraining=true else =false }
+
+	_ Tại NewTrainingComponent : 
+		. Hiện tại đang output từ app-new-training ra để training component nhận lại => đã thay bằng service ( subject )
+		. Tại hàm onStartTraining() : this.trainingService.startExercise();
+			
+_ Dùng form cho trang new-training : 
+	. Bọc thẻ <form (ngSubmit)="onStartTraining(f)" #f="ngForm"
+	. ngModel cho select và name="exercise" và required
+	. Button bỏ click và [diabled]="f.invalid"
+	. Sự kiện onStartTraining(form : NgForm ) : this.trainingService.startExercise(form.value.exercise);
+
+_ Xử lý thời gian bài tập :
+
+	. Tại TrainingService : viết phương thực trả về running exercise => getRunningExercise() return { ...this.runningExercise }
+	. Tại CurrentTraining : lưu ý spinner chỉ chạy từ 0 - 100 và setInterval là 1000
+		const step = this.trainingServie.getRunningExercise().duration / 100 * 1000;
+		Truyền step thay cho 1000 trong interval.
+	VD : 30/100 * 1000 = 300;
+
+_ Xử lý Complete & Cancel training : trước đây dùng Output
+
+	. Tại TrainingService : viết completeExercise & cancelExercise
+		Tạo exercises: Exercise[] = []; // danh sách các bài đã tập
+		complete : 
+			this.exercises.push({...this.runningExercise, date: new Date(), state : 'completed'}) và 
+			runningExercise = null và 
+			exerciseChanged.next(null)
+		cancel(progress : number) :
+			this.exercises.push({...this.runningExercise, date: new Date(), state : 'completed'}) và 
+			duration: this.runningExercise.duration * ( progress / 100 ),
+			calories: this.runningExercise.duration * ( progress / 100 ),
+			runningExercise = null và 
+			exerciseChanged.next(null)
+	. Tại current-training component :
+		Khi dialog closed và subscribe : if(result) this.trainingService.cancelExercise(this.progress ) 
+						else this.startOrResumeTimer(); ( Nếu this.progress >= 100 bổ sung thêm this.trainingService.completeExercise())
+
+
+
+
+
+RXJS 6 : import { Subject, Subscription } from 'rxjs' thay cho import { Subject } from 'rxjs/Subject';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

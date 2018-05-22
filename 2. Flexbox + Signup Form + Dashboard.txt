@@ -1,0 +1,253 @@
+﻿1. Giới thiệu : sử dụng @angular/flex-layout
+
+npm install @angular/flex-layout --save
+
+2. Sử dụng :
+
+B1 : Cài đặt npm 
+B2 : Khai báo module : import { FlexLayoutModule } from "@angular/flex-layout";
+B3 : Sử dụng thông qua các directive ( thay vì viết css )
+
+_ <form fxLayout="column" fxLayoutAlign="center"> // Nằm center tính từ top -> bottm ( tính theo column )
+
+_ Không cho input full-width : gắn class cho thẻ section bao bọc thẻ form. ( signup-form )
+
+mat-form-field{
+	width: 300px;
+}
+
+Sau đó bổ sung fxLayoutAlign="center center" cho nó canh middle. ( giữa màn hình tính theo chiều column )
+
+3. Sign up form : các control luôn bao bọc = thẻ mat-form-field
+
+_ Button submit : mat-raised-button color primary. ( MatButtonModule )
+_ Sử dụng form trong angular :
+	. Import FormsModule
+	. Gắn name cho các input và <input ngModel />
+	. Gắn template reference cho form : #f="ngForm"
+	. (ngSubmit)="onSubmit(f)"
+		onSubmit(form: NgForm) // from @angular/forms; log ra xem
+
+_ Validate form : sử dụng mat-hint hiển thị như placeholder
+	Email : sử dụng directive email ( có sẵn của angular )
+	Required : sử dụng directive required.
+	Min length : minlength
+	
+	. Email : email, required
+	. Password : required, minlength="6"
+	
+	. Sử dụng hint : có 2 cách dùng thẻ <mat-hint> hoặc directive hintLabel="" cho thẻ mat-form-field bao bọc input có directive matInput.
+		So sánh => Dùng thẻ : có các attribute : align="end". VD : gắn #pwInput="ngModel", {{ pwInput.value?.length }}/6	
+	. Hiển thị lỗi dùng thẻ : mat-error ( tự động bắt lỗi )
+		. Trường hợp dùng nhiều mat-error : gắn #emailInput="ngModel" cho input. Sau đó dùng *ngIf="emailInput.hasError('required[ hoặc lỗi khác ]')"
+		. Email : *ngIf="emailInput.hasError('required')" và *ngIf="!emailInput.hasError('required')"
+		. Password : <mat-error>Has to be at least 6 characters long></>
+_ Sử dụng Datepicker :
+	. Lưu ý : locale code, date format.
+	MatDatepickerModule
+	MatNativeDateModule
+
+	<mat-form-field>
+		<input matInput
+			placeholder="Your birthday"
+			[matDatepicker]="picker" // kết nối đến mat-datepicker
+			ngModel
+			name="birthday"
+			required
+		/>
+		<mat-datepicker-toggle 
+			[for]="picker"
+			matSuffix // thêm sau cùng - để giao diện đẹp hơn
+		></> // Nút date for : khi click vào xổ mat-datepicker
+		<mat-datepicker #picker></>
+	</>
+	. Ngày tối đa : ( dùng property binding ) :
+		<input 
+			[max]="maxDate"
+		/>
+
+		Tại component :
+
+		maxDate;
+
+		ngOnInit(){
+			this.maxDate = new Date();
+			this.maxDate.setFullYear(this.maxDate.getFullYear() - 18); // 18 tuổi trở lên
+		}
+
+_ Sử dụng checkbox : mat-checkbox - MatCheckboxModule 
+	. Lưu ý : không bao bọc bằng mat-form-field
+	<mat-checkbox labelPosition="before" ngModel name="agree" color="primary">Agree to Terms and Conditions.</> // mặc định labelPosition là after
+
+_ Style form : dùng flex-layout
+	. fxLayoutGap="10px" cho thẻ form. Khoảng cách giữa các control.	
+	. [disabled]="f.invalid"
+
+4. Angular Material Advanced : Toolbars, SideNavs...
+
+* MatSidenavModule
+
+_ Dùng basic sidenav tại : app.component.html. 
+<mat-sidenav-container>
+	<mat-sidenav opened="true"> // thay thế [open]="openSidenav" khi dùng biến bool. => <mat-sidenav #sidenav role="navigation" >
+		<p>My Sidenav</p>
+	</>
+	<mat-sidenav-content>
+		<button (click)="openSidenav = true">Show Sidenav</> => (click)="sidenav.toggle()"
+		<router-outlet></>
+	</>
+</>
+
+component.ts :
+
+openSidenav = false;
+
+_ Dùng font : Roboto google
+	. Khai báo link
+	. css : html, body{ font-family: 'Roboto', sans-serif; height: 100%; }, body { margin: 0 }
+
+
+
+_ Kết hợp thêm toolbar : MatToolbarModule
+
+<mat-sidenav-container>
+    <mat-sidenav #sidenav role="navigation">
+        <h1>Fitness</h1>
+    </mat-sidenav>
+    <mat-sidenav-content>
+	<mat-toolbar color="primary">
+            <div>
+                <button mat-icon-button (click)="sidenav.toggle()">
+			<mat-icon>menu</>
+		</button>
+            </div>
+            <div>
+                <a routerLink="/">LOGO</>
+            </div>
+            <div>
+                <a routerLink="/signup">Signup</a>
+                <a routerLink="/login">Login</a>
+                <a routerLink="/training">Training</a>
+            </div>
+        </mat-toolbar>
+        <main>
+		<router-outlet></router-outlet>
+	</>
+    </mat-sidenav-content>
+</mat-sidenav-container>
+
+// Có thể sử dụng ViewChild để toggle sidenav
+
+
+_ Styleing cho sidenav :
+
+mat-sidenav-container, mat-sidenav-content, mat-sidenav{
+   height: 100%;
+}
+
+mat-sidenav {
+   width: 250px;
+}
+
+a{
+   text-decoration : none;
+   color: white;
+}
+
+a:hover, a:active{
+   color: lightgray;
+}
+
+Cho link sang phải :
+
+	C1 : <div fxFlex fxLayout fxLayoutAlign="flex-end"> : Các link. ** recommended
+ 	C2 : cho khoảng trống ở giữa logo và link : <div fxFlex>
+
+Thay thế link thành :
+
+	<ul class="navigation-items" fxLayout fxLayoutGap="10px">
+		<li>Các link</>
+	</>
+
+	.navigation-items{
+		list-style : none;
+		margin : 0;
+		padding : 0;
+	}
+
+_ Reponsive : Responsive API - màn hình nhỏ ẩn các menu và cho sang navigation bên trái.
+
+Ý tưởng : xs sẽ ẩn sidenav và > xs hiển các menu
+
+xs sm md lg xl
+fxHide
+fxShow
+
+	. Cho menu : login, signup, training không hiển thị trên thiết bị nhỏ.
+		fxHide.xs cho ul có class navigation-items
+
+	. Cho button toggle : lt-[size], gt-[size]
+		fxHide.gt-xs cho div bao bọc button toggle.( > xs sẽ ẩn )
+_ Navigation List : Phần menu bên trái
+	MatListModule
+	mat-nav-list và các thẻ có directive mat-list-item ( hoặc thẻ mat-list-item )
+
+	. Tiến hành đưa các link sang bên trái dùng mat-nav-list.
+		<mat-nav-list>
+			<a mat-list-item routerLink="/signup" (click)="sidenav.close()">
+				<mat-icon>face</>
+				<span class="nav-caption">Signup</> // display: inline-block, padding-left: 6px;
+			</>
+		</>
+	
+		// Tương tự : icon input cho login và fitness_center
+	. Bổ sung thêm button logout : ( cho cả thiết bị lớn và nhỏ )
+		<mat-list-item>
+			<button mat-icon-button>
+				<mat-icon>eject</>
+				<span class=""> Logout
+
+_ Tách navigation thành component :
+
+ng g c navigation/header --module app.module
+ng g c navigation/sidenav-list --module app.module
+
+	.sidenav : cắt mat-nav-list. Các css a, a:hover
+	.header : cắt phần toolbar, cắt css a, a:hover, navigation-items, nav-caption
+	.Tiến hành : nhúng vào app. Fix lỗi dùng template ref để đóng sidenav. Thay bằng dụng event binding và output
+
+Header.ts
+
+	Bắt sự kiện (click)="onToggleSidenav()"
+
+	@Output() sidenavToggle = new EventEmitter<void>();
+
+	onToggleSidenav(){
+		this.sidenavToggle.emit();
+	}
+
+	<app-header (sidenavToggle)="sidenav.toggle()"
+Sidenav-List :
+
+	Bắt sự kiện (click)="onClose()"
+
+	// tương tự
+
+	<app-side-nav-list (closeSidenav)="sidenav.close()"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
